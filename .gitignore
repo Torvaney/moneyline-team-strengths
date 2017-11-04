@@ -1,0 +1,13 @@
+# Directories to ignore
+papers
+data
+figs
+
+# Python crap
+venv
+
+# R junk
+.Rproj.user
+*.Rproj
+R/parse_raw_football_data.R
+R/test_distributions.R
