@@ -73,7 +73,7 @@ def run_stan_model(games):
     # between python and Stan
     team_names = model.get_team_map(games)
 
-    # Fit the model
+    # Put the data into Stan format
     stan_data = {
         'n_games': len(games),
         'n_teams': len(team_map),
@@ -83,7 +83,7 @@ def run_stan_model(games):
         'away_logit': games['away_win_logit']
     }
 
-    # Output estimates
+    # Fit and output estimates
     fit = model.optimizing(stan_data)
 
     return fit
