@@ -74,6 +74,12 @@ team_ratings <- bind_rows(team_ratings, benchmark)
 
 # Analysis ----
 
+# For aesthetic continuity
+colours <- list(
+  low = "#9ecae1",
+  high = "#08519c"
+)
+
 # Show that home and away ratings are the same
 # Note the trend in the intercept changing over time.
 # Not sure what that means, exactly...
@@ -82,7 +88,10 @@ team_ratings %>%
   tidyr::spread(line, estimate) %>% 
   ggplot(aes(x = home_logit, y = -away_logit)) +
   geom_point() +
-  theme_minimal()
+  theme_minimal() +
+  xlab("Home") +
+  ylab("Away") +
+  ggtitle("Estimated team strengths", "Premier League 12/13 to 16/17")
 
 # What's the correlation between home and away-derived
 # strengths?
@@ -105,32 +114,34 @@ team_ratings %>%
          term != "(Intercept)",
          season == 2016) %>%  
   ggplot(aes(y= estimate, x = reorder(term, estimate))) +
-  geom_bar(stat = "identity") +
+  geom_bar(stat = "identity", fill = colours$high) +
   coord_flip() +
   theme_minimal() +
   theme(axis.title.x = element_blank(),
         axis.title.y = element_blank()) +
-  ggtitle("Market-implied team ratings")
+  ggtitle("Market-implied team ratings",
+          "2016/17")
 
 # For all seasons:
+format_season <- function(x) return(sprintf("%02d/%02d", x %% 100, (x+1) %% 100))
+
 team_ratings %>% 
   filter(line == "home_logit",
          term != "(Intercept)") %>% 
   ggplot(aes(y= estimate, x = reorder(term, estimate))) +
-  geom_bar(stat = "identity") +
-  facet_wrap( ~ season, scales = "free_y") +
+  geom_bar(stat = "identity", fill = colours$high) +
+  facet_wrap( ~ format_season(season), scales = "free_y") +
   coord_flip() +
   theme_minimal() +
   theme(axis.title.x = element_blank(),
         axis.title.y = element_blank()) +
-  ggtitle("Market-implied team ratings")
+  ggtitle("Market-implied team ratings",
+          "2012/13 to 2016/17")
 
 # Plot ratings over time
 # Remember, each year's rating is relative to Stoke's 
 # strength. The line connecting points from year to 
 # year is a bit of a cheat, tbh.
-format_season <- function(x) return(sprintf("%02d/%02d", x %% 100, (x+1) %% 100))
-
 team_ratings %>% 
   filter(line == "home_logit",
          term != "(Intercept)") %>% 
