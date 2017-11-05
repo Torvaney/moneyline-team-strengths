@@ -11,3 +11,6 @@ venv
 *.Rproj
 R/parse_raw_football_data.R
 R/test_distributions.R
+
+# Other rubbish
+copy_assets.sh
