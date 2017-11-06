@@ -1,0 +1,7 @@
+pandas==0.18.1
+numpy==1.12.0
+pystan==2.14.0.0
+requests==2.11.1
+requests[security]
+beautifulsoup4==4.6.0
+progressbar2==3.34.3
