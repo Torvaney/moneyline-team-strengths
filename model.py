@@ -71,7 +71,7 @@ def run_stan_model(games):
 
     # Stan only takes numeric values. Create team: id mapping to pass factors
     # between python and Stan
-    team_names = model.get_team_map(games)
+    team_map = get_team_map(games)
 
     # Put the data into Stan format
     stan_data = {

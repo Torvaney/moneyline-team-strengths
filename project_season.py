@@ -85,6 +85,7 @@ if __name__ == '__main__':
     fit = model.run_stan_model(games)
 
     # Parse the output into a nice dict
+    team_map = model.get_team_map(games)
     team_strengths = {
         name: fit['team_strength'][i-1] for name, i in team_map.items()
     }

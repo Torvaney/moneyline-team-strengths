@@ -5,6 +5,7 @@ figs
 
 # Python crap
 venv
+__pycache__
 
 # R junk
 .Rproj.user
