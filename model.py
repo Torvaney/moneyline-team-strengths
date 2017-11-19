@@ -119,7 +119,7 @@ def parse_stan_fit(fit, games, alpha=0.05):
     return team_strength
 
 
-def run_model(games):
+def run(games):
     games = prepare_games(games)
     fit = run_stan_model(games)
     team_strength = parse_stan_fit(fit, games)
@@ -135,5 +135,5 @@ if __name__ == '__main__':
 
     games = pd.read_csv(args.oddsfile)
 
-    team_strength = run_model(games)
+    team_strength = run(games)
     team_strength.to_csv(args.outfile, index=False, encoding='utf-8')
