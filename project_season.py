@@ -130,8 +130,8 @@ if __name__ == '__main__':
         args.n_sims,
         games,
         team_strengths,
-        fit['home_theta'],
-        fit['away_theta']
+        fit['theta_home'],
+        fit['theta_away']
     )
     # Dump simulation results to file
     simulated_seasons.to_csv(args.outfile, index=False, encoding='utf-8')
