@@ -1,12 +1,12 @@
 import datetime as dt
 import os
+import time
 
 from bs4 import BeautifulSoup
 import requests
 import pandas as pd
 
-
-OUTRIGHT_URL = 'https://www.oddschecker.com/football/english/premier-league/winner'
+PL_URL_STEM = 'https://www.oddschecker.com/football/english/premier-league/{}'
 
 
 BOOKMAKER_MAP = {
@@ -41,9 +41,10 @@ BOOKMAKER_MAP = {
 }
 
 
-if __name__ == '__main__':
+def fetch_outrights(url):
+    """ Fetch outright odds from oddschecker and return as a dataframe. """
 
-    r = requests.get(OUTRIGHT_URL)
+    r = requests.get(url)
     page = BeautifulSoup(r.text, 'lxml')
 
     # Parse column names
@@ -63,8 +64,15 @@ if __name__ == '__main__':
                 'odds': price if price != 0 else None
             })
 
-    # Save to file
-    pd.DataFrame(odds).to_csv(os.path.join(
-        os.path.dirname(__file__),
-        'data/outrights.csv'
-    ), index=False, encoding='utf-8')
+    return pd.DataFrame(odds)
+
+
+if __name__ == '__main__':
+    for outright in ['winner', 'relegation']:
+        odds = fetch_outrights(PL_URL_STEM.format(outright))
+        # Save to file
+        odds.to_csv(os.path.join(
+            os.path.dirname(__file__),
+            'data/outright_{}.csv'.format(outright)
+        ), index=False, encoding='utf-8')
+        time.sleep(2.5)

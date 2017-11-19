@@ -10,17 +10,22 @@ colours <- list(
 
 # Load the data
 simulations <- read_csv("data/simulated_seasons.csv")
-outrights <- read_csv("data/outrights.csv")
+outright_winner <- read_csv("data/outright_winner.csv")
+outright_relegation <- read_csv("data/outright_relegation.csv")
 
 # Normalise odds by bookmaker
-outrights <- outrights %>% 
-  # Align team names
-  mutate(team = sub("Man Utd", "Man United", team)) %>% 
-  group_by(bookmaker) %>% 
-  mutate(prob = 1 / odds,
-         vig = sum(prob),
-         prob = prob / vig) %>% 
-  select(-vig)
+normalise_odds <- function(df) {
+  df %>% 
+    # Align team names
+    mutate(team = sub("Man Utd", "Man United", team)) %>% 
+    group_by(bookmaker) %>% 
+    mutate(prob_raw = 1 / odds,
+           vig = sum(prob_raw),
+           prob = prob_raw / vig) %>% 
+    select(-vig)
+}
+outright_winner <- normalise_odds(outright_winner)
+outright_relegation <- normalise_odds(outright_relegation)
 
 
 simulations %>% 
@@ -76,7 +81,7 @@ winning_probabilities <- position_probabilities %>%
   filter(!is.na(prob))  # Remove teams with very low win probabilities
 
 winning_probabilities %>% 
-  bind_rows(outrights) %>% 
+  bind_rows(outright_winner %>% mutate(prob = prob_raw)) %>% 
   filter(team %in% winning_probabilities$team) %>% 
   mutate(implied = ifelse(bookmaker == "strength_implied", "implied", "bookmaker")) %>% 
   ggplot(aes(x = reorder(team, prob), y = 100 * prob)) +
@@ -89,8 +94,36 @@ winning_probabilities %>%
   scale_size_manual(values = c(bookmaker = 2, implied = 3)) +
   theme_minimal() +
   theme(legend.position = "bottom") +
-  ggtitle("Title probabilities",
+  ggtitle("Title probabilities (unnormalised)",
           "Premier League 2017/18") +
+  ylab("%") + xlab("")
+
+
+relegation_probabilities <- position_probabilities %>% 
+  filter(position >= 18) %>% 
+  group_by(team) %>% 
+  summarise(percent = sum(percent)) %>% 
+  mutate(odds = 1 / percent,
+         bookmaker = "strength_implied") %>% 
+  rename(prob = percent) %>% 
+  filter(!is.na(prob))  # Remove teams with very low win probabilities
+
+relegation_probabilities %>% 
+  bind_rows(outright_relegation %>% mutate(prob = prob_raw)) %>% 
+  filter(team %in% relegation_probabilities$team) %>% 
+  mutate(implied = ifelse(bookmaker == "strength_implied", "implied", "bookmaker")) %>% 
+  ggplot(aes(x = reorder(team, prob), y = 100 * prob)) +
+  geom_point(aes(size = implied,
+                 colour = implied,
+                 alpha = implied)) +
+  coord_flip() +
+  scale_alpha_manual(values = c(implied = 1, bookmaker = 0.5)) +
+  scale_colour_manual(values = c(bookmaker = "#60add5", implied = "#08519c")) +
+  scale_size_manual(values = c(bookmaker = 2, implied = 3)) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  ggtitle("Relegation probabilities (unnormalised)",
+          "Bookies' outright odds vs implied by team strengths") +
   ylab("%") + xlab("")
 
 
@@ -125,3 +158,14 @@ position_probabilities %>%
           "Premier League 2017/18") +
   ylab("%") + xlab("")
 
+# Difference between West Ham and Everton's points
+simulations %>% 
+  filter(team %in% c("West Ham", "Everton")) %>% 
+  tidyr::spread(team, points) %>% 
+  mutate(diff = Everton - `West Ham`) %>% 
+  ggplot(aes(x = diff)) +
+  geom_histogram(binwidth = 1) +
+  geom_vline(xintercept = 0) +
+  geom_vline(xintercept = -6) +
+  geom_vline(xintercept = 6) +
+  theme_minimal()
