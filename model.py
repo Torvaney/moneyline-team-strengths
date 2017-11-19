@@ -1,3 +1,4 @@
+import argparse
 import os
 
 import numpy as np
@@ -91,15 +92,16 @@ def run_stan_model(games):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('oddsfile', type=str, help='Path to csv of odds data.')
+    parser.add_argument('outfile', type=str, help='Where to save output csv of '
+                        'team strength estimates')
+    args = parser.parse_args()
+
     # Load the data
-    games = pd.read_csv(os.path.join(
-        os.path.dirname(__file__),
-        'data/premier-league-all-books.csv'
-    ))
+    games = pd.read_csv(args.oddsfile)
 
     # Wrangle the data
-    games['home_team'] = games['home_team'] + '-' + games['bookmaker'] + '-' + games['season'].astype(str)
-    games['away_team'] = games['away_team'] + '-' + games['bookmaker'] + '-' + games['season'].astype(str)
     games = prepare_games(games)
 
     # Fit the model
@@ -114,7 +116,4 @@ if __name__ == '__main__':
         })
     team_strength = pd.DataFrame(team_strength_records)
 
-    team_strength.to_csv(os.path.join(
-        os.path.dirname(__file__),
-        'data/fitted_strengths.csv'
-    ), index=False, encoding='utf-8')
+    team_strength.to_csv(args.outfile, index=False, encoding='utf-8')
