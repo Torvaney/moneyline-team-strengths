@@ -26,11 +26,14 @@ def normalise_odds(home_win, draw, away_win):
     return [p / juiced_probability for p in probs]
 
 
+def get_map(items):
+    return {name: id_ for id_, name in enumerate(set(items), start=1)}
+
+
 def get_team_map(games):
     """ Get a mapping of teamname to makeshift id from a dataframe of games. """
     team_names = set(games['home_team']) | set(games['away_team'])
-    team_map = {name: id_ for id_, name in enumerate(team_names, start=1)}
-    return team_map
+    return get_map(team_names)
 
 
 def prepare_games(games):
@@ -73,19 +76,22 @@ def run_stan_model(games):
     # Stan only takes numeric values. Create team: id mapping to pass factors
     # between python and Stan
     team_map = get_team_map(games)
+    season_map = get_map(games['season'])
 
     # Put the data into Stan format
     stan_data = {
         'n_games': len(games),
         'n_teams': len(team_map),
+        'n_seasons': len(season_map),
         'home_team': games['home_team'].replace(team_map),
         'away_team': games['away_team'].replace(team_map),
+        'season': games['season'].replace(season_map),
         'home_logit': games['home_win_logit'],
         'away_logit': games['away_win_logit']
     }
 
     # Fit and output estimates
-    fit = model.optimizing(stan_data)
+    fit = model.sampling(stan_data, iter=4000)
 
     return fit
 
@@ -98,22 +104,31 @@ if __name__ == '__main__':
                         'team strength estimates')
     args = parser.parse_args()
 
-    # Load the data
+    # Load and wrangle the data
     games = pd.read_csv(args.oddsfile)
-
-    # Wrangle the data
     games = prepare_games(games)
 
     # Fit the model
     fit = run_stan_model(games)
 
-    # Parse the output and save to file
+    # Aggregate sampling for speed
+    lower_strengths = np.percentile(fit['team_strength'], 5, axis=0)
+    median_strengths = np.median(fit['team_strength'], axis=0)
+    upper_strengths = np.percentile(fit['team_strength'], 95, axis=0)
+
+    # Parse model output into a nice dataframe
+    team_map = get_team_map(games)
+    season_map = get_map(games['season'])
     team_strength_records = []
-    for name, i in team_map.items():
-        team_strength_records.append({
-            'team': name,
-            'strength': fit['team_strength'][i-1]
-        })
+    for team, ti in team_map.items():
+        for season, si in season_map.items():
+            team_strength_records.append({
+                'team': team,
+                'season': season,
+                'lower': lower_strengths[ti-1, si-1],
+                'strength': median_strengths[ti-1, si-1],
+                'upper': upper_strengths[ti-1, si-1]
+            })
     team_strength = pd.DataFrame(team_strength_records)
 
     team_strength.to_csv(args.outfile, index=False, encoding='utf-8')
