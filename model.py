@@ -96,25 +96,11 @@ def run_stan_model(games):
     return fit
 
 
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('oddsfile', type=str, help='Path to csv of odds data.')
-    parser.add_argument('outfile', type=str, help='Where to save output csv of '
-                        'team strength estimates')
-    args = parser.parse_args()
-
-    # Load and wrangle the data
-    games = pd.read_csv(args.oddsfile)
-    games = prepare_games(games)
-
-    # Fit the model
-    fit = run_stan_model(games)
-
+def parse_stan_fit(fit, games, alpha=0.05):
     # Aggregate sampling for speed
-    lower_strengths = np.percentile(fit['team_strength'], 5, axis=0)
+    lower_strengths = np.percentile(fit['team_strength'], alpha*100, axis=0)
     median_strengths = np.median(fit['team_strength'], axis=0)
-    upper_strengths = np.percentile(fit['team_strength'], 95, axis=0)
+    upper_strengths = np.percentile(fit['team_strength'], (1-alpha)*100, axis=0)
 
     # Parse model output into a nice dataframe
     team_map = get_team_map(games)
@@ -130,5 +116,22 @@ if __name__ == '__main__':
                 'upper': upper_strengths[ti-1, si-1]
             })
     team_strength = pd.DataFrame(team_strength_records)
+    return team_strength
 
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('oddsfile', type=str, help='Path to csv of odds data.')
+    parser.add_argument('outfile', type=str, help='Where to save output csv of '
+                        'team strength estimates')
+    args = parser.parse_args()
+
+    # Load and wrangle the data
+    games = pd.read_csv(args.oddsfile)
+    games = prepare_games(games)
+
+    # Fit the model
+    fit = run_stan_model(games)
+
+    team_strength = parse_stan_fit(fit, games)
     team_strength.to_csv(args.outfile, index=False, encoding='utf-8')
