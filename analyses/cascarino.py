@@ -2,8 +2,6 @@ import os
 
 import numpy as np
 import pandas as pd
-import progressbar
-import pystan
 
 import model
 import project_season
