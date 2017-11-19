@@ -1,3 +1,4 @@
+import argparse
 import os
 
 import numpy as np
@@ -74,11 +75,13 @@ def simulate_season(games, team_strengths, home_theta, away_theta):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('gamesfile', help='Location of csv containing existing games.')
+    parser.add_argument('outfile', help='Where to save the simulated seasons.')
+    args = parser.parse_args()
+
     # Load the data
-    games = pd.read_csv(os.path.join(
-        os.path.dirname(__file__),
-        'data/premier-league-2017.csv'
-    ))
+    games = pd.read_csv(args.gamesfile)
 
     # Wrangle the data and fit the model
     games = model.prepare_games(games)
@@ -114,7 +117,4 @@ if __name__ == '__main__':
 
     # Dump simulation results to file
     simulated_seasons = pd.DataFrame(simulated_seasons)
-    simulated_seasons.to_csv(os.path.join(
-        os.path.dirname(__file__),
-        'data/simulated_seasons.csv'
-    ), index=False, encoding='utf-8')
+    simulated_seasons.to_csv(args.outfile, index=False, encoding='utf-8')
