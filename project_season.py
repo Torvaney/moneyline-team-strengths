@@ -88,8 +88,8 @@ def simulate_seasons(n_sims, games, team_strengths, home_theta, away_theta):
         simulation = simulate_season_once(
             games,
             team_strengths,
-            fit['theta_home'],
-            fit['theta_away']
+            theta_home,
+            theta_away
         )
 
         # Store individual records tidily
@@ -130,8 +130,8 @@ if __name__ == '__main__':
         args.n_sims,
         games,
         team_strengths,
-        home_theta,
-        away_theta
+        fit['home_theta'],
+        fit['away_theta']
     )
     # Dump simulation results to file
     simulated_seasons.to_csv(args.outfile, index=False, encoding='utf-8')
