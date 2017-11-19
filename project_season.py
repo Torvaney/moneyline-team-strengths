@@ -32,7 +32,7 @@ def simulate_game(home_prob, draw_prob, away_prob):
     return home_points, away_points
 
 
-def simulate_season(games, team_strengths, home_theta, away_theta):
+def simulate_season_once(games, team_strengths, home_theta, away_theta):
     """
     Simulates a season once from a dataframe of games already played and a set
     of model parameters:
@@ -74,10 +74,42 @@ def simulate_season(games, team_strengths, home_theta, away_theta):
     return team_points
 
 
+def simulate_seasons(n_sims, games, team_strengths, home_theta, away_theta):
+    """
+    Simulates a season `n_sims` times from a dataframe of games already played
+    and a set of model parameters:
+     * team_strength: dict of team name: strength
+     * home_theta: model's home intercept
+     * away_theta: model's away intercept
+    """
+    pbar = progressbar.ProgressBar(max_value=n_sims)
+    simulated_seasons = []
+    for sim_id in range(n_sims):
+        simulation = simulate_season_once(
+            games,
+            team_strengths,
+            fit['theta_home'],
+            fit['theta_away']
+        )
+
+        # Store individual records tidily
+        for team, pts in simulation.items():
+            simulated_seasons.append({
+                'team': team,
+                'points': pts,
+                'sim_id': sim_id + 1
+            })
+        pbar += 1
+    pbar.finish()
+    return pd.DataFrame(simulated_seasons)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('gamesfile', help='Location of csv containing existing games.')
     parser.add_argument('outfile', help='Where to save the simulated seasons.')
+    parser.add_argument('--n_sims', type=int, default=int(1e4),
+                        help='Number of times to simulate the season')
     args = parser.parse_args()
 
     # Load the data
@@ -94,27 +126,12 @@ if __name__ == '__main__':
     }
 
     # Now simulate the season using model estimates
-    n_sims = int(1e4)
-    pbar = progressbar.ProgressBar(max_value=n_sims)
-    simulated_seasons = []
-    for sim_id in range(n_sims):
-        simulation = simulate_season(
-            games,
-            team_strengths,
-            fit['theta_home'],
-            fit['theta_away']
-        )
-
-        # Store individual records tidily
-        for team, pts in simulation.items():
-            simulated_seasons.append({
-                'team': team,
-                'points': pts,
-                'sim_id': sim_id + 1
-            })
-        pbar += 1
-    pbar.finish()
-
+    simulated_seasons = simulate_seasons(
+        args.n_sims,
+        games,
+        team_strengths,
+        home_theta,
+        away_theta
+    )
     # Dump simulation results to file
-    simulated_seasons = pd.DataFrame(simulated_seasons)
     simulated_seasons.to_csv(args.outfile, index=False, encoding='utf-8')
