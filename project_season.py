@@ -40,15 +40,15 @@ def simulate_season_once(games, team_strengths, home_theta, away_theta):
      * home_theta: model's home intercept
      * away_theta: model's away intercept
     """
-    team_map = model.get_team_map(games)
+    teams = set(team_strengths)
 
     # Make specific fixtures easy to retreive
     indexed_games = games.set_index(['home_team', 'away_team'])
 
     # Initialise teams' points to zero
-    team_points = {t: 0 for t in team_map}
-    for home_team in team_map:
-        for away_team in team_map:
+    team_points = {t: 0 for t in teams}
+    for home_team in teams:
+        for away_team in teams:
             if home_team == away_team:
                 # A team cannot play itself, ignore this
                 continue
@@ -88,8 +88,8 @@ def simulate_seasons(n_sims, games, team_strengths, home_theta, away_theta):
         simulation = simulate_season_once(
             games,
             team_strengths,
-            theta_home,
-            theta_away
+            home_theta,
+            away_theta
         )
 
         # Store individual records tidily
