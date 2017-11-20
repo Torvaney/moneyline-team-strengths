@@ -1,4 +1,5 @@
 import argparse
+import collections
 import os
 
 import numpy as np
@@ -7,6 +8,10 @@ import progressbar
 import pystan
 
 import model
+
+
+TeamRecord = collections.namedtuple('TeamRecord', 'points win draw lose')
+Sim = collections.namedtuple('Sim', 'team points sim_id')
 
 
 def calculate_probabilities(home_strength, away_strength, home_theta, away_theta):
@@ -20,16 +25,8 @@ def simulate_game(home_prob, draw_prob, away_prob):
     """ Simulates a single game, returning home and away points. """
 
     probs = [home_prob, draw_prob, away_prob]
-
-    home_points = np.random.choice([3, 1, 0], p=probs)
-    if home_points == 3:
-        away_points = 0
-    elif home_points == 1:
-        away_points = 1
-    elif home_points == 0:
-        away_points = 3
-
-    return home_points, away_points
+    result = np.random.choice(['H', 'D', 'A'], p=probs)
+    return result
 
 
 def simulate_season_once(games, team_strengths, home_theta, away_theta):
@@ -40,15 +37,15 @@ def simulate_season_once(games, team_strengths, home_theta, away_theta):
      * home_theta: model's home intercept
      * away_theta: model's away intercept
     """
-    team_map = model.get_team_map(games)
+    teams = set(team_strengths)
 
     # Make specific fixtures easy to retreive
     indexed_games = games.set_index(['home_team', 'away_team'])
 
     # Initialise teams' points to zero
-    team_points = {t: 0 for t in team_map}
-    for home_team in team_map:
-        for away_team in team_map:
+    team_points = {t: TeamRecord(0, 0, 0, 0) for t in teams}
+    for home_team in teams:
+        for away_team in teams:
             if home_team == away_team:
                 # A team cannot play itself, ignore this
                 continue
@@ -63,14 +60,24 @@ def simulate_season_once(games, team_strengths, home_theta, away_theta):
                     home_theta,
                     away_theta
                 )
-                home_points, away_points = simulate_game(*probs)
-                game = {
-                    'home_points': home_points,
-                    'away_points': away_points
-                }
+                result = simulate_game(*probs)
 
-            team_points[home_team] += game['home_points']
-            team_points[away_team] += game['away_points']
+            if game.result == 'H':
+                team_points[home_team].points += 3
+                team_points[away_team].points += 0
+                team_points[home_team].win += 1
+                team_points[away_team].lose += 1
+            elif game.result == 'D':
+                team_points[home_team].points += 1
+                team_points[away_team].points += 1
+                team_points[home_team].draw += 1
+                team_points[away_team].draw += 1
+            elif game.result == 'A':
+                team_points[home_team].points += 0
+                team_points[away_team].points += 3
+                team_points[home_team].lose += 1
+                team_points[away_team].win += 1
+
     return team_points
 
 
@@ -88,8 +95,8 @@ def simulate_seasons(n_sims, games, team_strengths, home_theta, away_theta):
         simulation = simulate_season_once(
             games,
             team_strengths,
-            theta_home,
-            theta_away
+            home_theta,
+            away_theta
         )
 
         # Store individual records tidily
