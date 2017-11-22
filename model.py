@@ -91,7 +91,7 @@ def run_stan_model(games):
     }
 
     # Fit and output estimates
-    fit = model.sampling(stan_data, iter=4000)
+    fit = model.sampling(stan_data, iter=1000)
 
     return fit
 

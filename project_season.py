@@ -10,8 +10,17 @@ import pystan
 import model
 
 
-TeamRecord = collections.namedtuple('TeamRecord', 'points win draw lose')
-Sim = collections.namedtuple('Sim', 'team points sim_id')
+Sim = collections.namedtuple('Sim', 'team points win draw lose sim_id')
+
+
+class TeamRecord(object):
+    __slots__ = ('points', 'win', 'draw', 'lose')
+
+    def __init__(self):
+        self.points = 0
+        self.win = 0
+        self.draw = 0
+        self.lose = 0
 
 
 def calculate_probabilities(home_strength, away_strength, home_theta, away_theta):
@@ -29,7 +38,7 @@ def simulate_game(home_prob, draw_prob, away_prob):
     return result
 
 
-def simulate_season_once(games, team_strengths, home_theta, away_theta):
+def simulate_season_once(games, team_strengths, home_theta, away_theta, cycles=1):
     """
     Simulates a season once from a dataframe of games already played and a set
     of model parameters:
@@ -43,45 +52,46 @@ def simulate_season_once(games, team_strengths, home_theta, away_theta):
     indexed_games = games.set_index(['home_team', 'away_team'])
 
     # Initialise teams' points to zero
-    team_points = {t: TeamRecord(0, 0, 0, 0) for t in teams}
-    for home_team in teams:
-        for away_team in teams:
-            if home_team == away_team:
-                # A team cannot play itself, ignore this
-                continue
-            try:
-                # Try to fetch game from those already played
-                game = indexed_games.loc[home_team, away_team]
-            except KeyError:
-                # Game has not been played; simulate game instead
-                probs = calculate_probabilities(
-                    team_strengths[home_team],
-                    team_strengths[away_team],
-                    home_theta,
-                    away_theta
-                )
-                result = simulate_game(*probs)
+    team_points = {t: TeamRecord() for t in teams}
+    for _ in range(cycles):
+        for home_team in teams:
+            for away_team in teams:
+                if home_team == away_team:
+                    # A team cannot play itself, ignore this
+                    continue
+                try:
+                    # Try to fetch game from those already played
+                    game = indexed_games.loc[home_team, away_team]
+                except KeyError:
+                    # Game has not been played; simulate game instead
+                    probs = calculate_probabilities(
+                        team_strengths[home_team],
+                        team_strengths[away_team],
+                        home_theta,
+                        away_theta
+                    )
+                    result = simulate_game(*probs)
 
-            if game.result == 'H':
-                team_points[home_team].points += 3
-                team_points[away_team].points += 0
-                team_points[home_team].win += 1
-                team_points[away_team].lose += 1
-            elif game.result == 'D':
-                team_points[home_team].points += 1
-                team_points[away_team].points += 1
-                team_points[home_team].draw += 1
-                team_points[away_team].draw += 1
-            elif game.result == 'A':
-                team_points[home_team].points += 0
-                team_points[away_team].points += 3
-                team_points[home_team].lose += 1
-                team_points[away_team].win += 1
+                if result == 'H':
+                    team_points[home_team].points += 3
+                    team_points[away_team].points += 0
+                    team_points[home_team].win += 1
+                    team_points[away_team].lose += 1
+                elif result == 'D':
+                    team_points[home_team].points += 1
+                    team_points[away_team].points += 1
+                    team_points[home_team].draw += 1
+                    team_points[away_team].draw += 1
+                elif result == 'A':
+                    team_points[home_team].points += 0
+                    team_points[away_team].points += 3
+                    team_points[home_team].lose += 1
+                    team_points[away_team].win += 1
 
     return team_points
 
 
-def simulate_seasons(n_sims, games, team_strengths, home_theta, away_theta):
+def simulate_seasons(n_sims, games, team_strengths, home_theta, away_theta, cycles=1):
     """
     Simulates a season `n_sims` times from a dataframe of games already played
     and a set of model parameters:
@@ -96,16 +106,20 @@ def simulate_seasons(n_sims, games, team_strengths, home_theta, away_theta):
             games,
             team_strengths,
             home_theta,
-            away_theta
+            away_theta,
+            cycles
         )
 
         # Store individual records tidily
-        for team, pts in simulation.items():
-            simulated_seasons.append({
-                'team': team,
-                'points': pts,
-                'sim_id': sim_id + 1
-            })
+        for team, record in simulation.items():
+            simulated_seasons.append(Sim(
+                team=team,
+                points=record.points,
+                win=record.win,
+                draw=record.draw,
+                lose=record.lose,
+                sim_id=sim_id + 1
+            ))
         pbar += 1
     pbar.finish()
     return pd.DataFrame(simulated_seasons)
